@@ -3,7 +3,7 @@
 # Script to:
 #     * Calculate 3-month composites (for visual classification)
 #     * First method: via medians
-#     * Second method: via overlay (scene with less gaps first) 
+#     * Second method: via overlay (scene with less clouds on top) 
 # 
 # *************************************************************************************************
 

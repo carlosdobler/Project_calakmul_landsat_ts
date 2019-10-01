@@ -3,7 +3,7 @@
 # Script to:
 #     * Decompress Landsat images 
 #     * Crop to extent
-#     * Calculate tasseled caps and NDMI
+#     * Calculate tasseled caps, dist. index, and NDMI
 #     * Save as multiband tif's in disk (including qa layer)
 #
 # *************************************************************************************************
@@ -11,7 +11,7 @@
 
 # Load libraries
 library(tidyverse)
-library(lubridate)
+# library(lubridate)
 library(stars)
 
 # Set directory of input and output files
@@ -76,10 +76,8 @@ seq_along(list.files(input_dir)) %>%
       
       merge() %>% 
       
-      # Convert to raster (smaller file size)
-      as("Raster") %>% 
-      
-      # Export
+      # Convert to raster and export (smaller file size)
+      as("Raster") %>%
       raster::writeRaster(str_c(output_dir, "00_cropped_masked_bands/img0_",date, "_", sensor, ".tif"),
                           datatype = "INT2S",
                           overwrite=TRUE)
@@ -106,4 +104,9 @@ seq_along(list.files(input_dir)) %>%
 # Band 5 = NIR             4                 5
 # Band 6 = SWIR 1          5                 6
 # Band 7 = SWIR 2          7                 7
+# Band 8 = Brightness
+# Band 9 = Greeness
+# Band 10 = Wetness
+# Band 11 = Dist. Ind.
+# Band 12 = NDMI
   
