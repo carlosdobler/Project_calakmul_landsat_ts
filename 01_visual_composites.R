@@ -3,7 +3,7 @@
 # Script to:
 #     * Calculate 3-month composites (for visual classification)
 #     * First method: via medians
-#     * Second method: via overlay (scene with less gaps first) 
+#     * Second method: via "ordered" overlay (scene with less gaps first) 
 # 
 # *************************************************************************************************
 
@@ -17,7 +17,7 @@ library(tictoc)
 
 dir <- "/media/cdobler/PSEUDBOMBAX/processed_data/calakmul_landsat_analysis/"
 
-# Assign quatrimesters to scenes
+# Assign quarters to scenes
 tibble(file = list.files(str_c(dir, "00_cropped_masked_bands/")),
        
        date = file %>% 
@@ -37,36 +37,36 @@ tibble(file = list.files(str_c(dir, "00_cropped_masked_bands/")),
   mutate(rn = group_indices()) -> date_tbl
 
 
-# Method 1: pixel-wise medians ********************************************************************
+# Method 1: per-pixel medians ********************************************************************
 
 # Parallelize
 library(furrr)
-plan(multisession, workers = 6)
+plan(multisession, workers = 6) # change to "multicore" if running outside RStudio (in Linux!)
 
 Sys.time()
 tic()
 
-# Loop through quatrimester-years
+# Loop through quarters-years
 date_tbl %>% 
   pull(rn) %>% 
   unique() %>% 
   
   future_map(function(i){
     
-    # Vector of available files within the quatrimester-year
+    # Vector of available files within the quarter-year
     date_tbl %>% 
       filter(rn == i) %>% 
       pull(file) %>% 
       str_c(dir, "00_cropped_masked_bands/", .) -> files
     
-    # Date in quatrimester-year format
+    # Date in year_quarter format
     date_tbl %>% 
       filter(rn == i) %>% 
       summarize() %>% 
       mutate(date = str_c(year, "_", comp)) %>% 
       pull(date) -> date
     
-    # Is there only one file within the quatrimester-year? Export as-is.
+    # Is there only one file within this quarter-year? Export as-is.
     if(length(files) == 1){
       
       read_stars(files, RasterIO = list(bands = 2:7)) %>% 
@@ -82,7 +82,7 @@ date_tbl %>%
       2:7 %>% 
         map(function(b){
           
-          # Loop through files within the quatrimester-year
+          # Loop through files within the quarter-year
           seq_along(files) %>% 
             map(function(f){
               
@@ -121,27 +121,27 @@ toc()
 Sys.time()
 tic()
 
-# Loop through quatrimester-years
+# Loop through quarter-years
 date_tbl %>% 
   pull(rn) %>% 
   unique() %>% 
   
   walk(function(i){
     
-    # Vector of available files within the quatrimester-year
+    # Vector of available files within the qurter-year
     date_tbl %>% 
       filter(rn == i) %>% 
       pull(file) %>% 
       str_c(dir, "00_cropped_masked_bands/", .) -> files
     
-    # Date in quatrimester-year format
+    # Date in year_quarter format
     date_tbl %>% 
       filter(rn == i) %>% 
       summarize() %>% 
       mutate(date = str_c(year, "_", comp)) %>% 
       pull(date) -> date
     
-    # Is there only one file within the quatrimester-year? Export as-is.
+    # Is there only one file within the quarter-year? Export as-is.
     if(length(files) == 1){
       
       read_stars(files, RasterIO = list(bands = 2:7)) %>% 

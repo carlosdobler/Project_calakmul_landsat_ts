@@ -2,8 +2,8 @@
 # *************************************************************************************************
 # Script to:
 #     * Calculate and analyze gaps
-#     * Choose three gap-less scenes and run unsupervised classification
-#     * Randomly distribute training points among resulting classes
+#     * Choose three gap-less scenes and run an unsupervised classification
+#     * Randomly distribute 450 training points among resulting classes
 #     * Produce CHIPS for each point
 # 
 # *************************************************************************************************
@@ -72,17 +72,16 @@ toc() # ~ 4 min
 # Select gap-less scenes
 gaps_tbl %>%
   filter(gaps < 5) %>% 
-  # slice(1, 6, 11, 13, 16) -> selected_scenes
   slice(1, 11, 16) %>% 
   pull(file) -> selected_scenes
 
 # Create table with NDMI of all pixels of selected scenes
 str_c(dir, "00_cropped_masked_bands/", selected_scenes) %>% 
-  read_stars(RasterIO = list(bands = 12)) %>% 
+  read_stars(RasterIO = list(bands = 14)) %>% # NBR
   merge() %>% 
   as_tibble() %>% 
   spread(key = X1, value = X) %>% 
-  filter(y < 2091625 - (16*30), # avoid edges
+  filter(y < 2091625 - (16*30), # avoid 16 pixels next to the limits of aoi
          y > 1983335 + (16*30),
          x < 274605 - (16*30),
          x > 232305 + (16*30)) -> ndmi_tbl
@@ -120,16 +119,19 @@ write_csv(training_pts_tbl,
 
 # PART 3: Create chips **************************************************************************** 
 
+training_pts_tbl <- read_csv(here::here("out_training/training_pts_tbl.csv"))
+
 # Loop through points
 training_pts_tbl %>% 
-  pmap(function(x, y, pt, ...){
+  #slice(1:349) %>%
+  pwalk(function(x, y, pt, ...){
     
-    print(glue::glue("Processing point {pt} of 450 ..."))
+    print(glue::glue("Processing point [{pt}] of 450 ..."))
     
-    # All quatrimester-years
+    # All quarter-years
     quatri_vect <- str_c("comp3m_", rep(1985:2018, each = 4), "_", 1:4, ".tif")
     
-    # Loop through all quatrimester-years (composites)
+    # Loop through all quarter-years (composites)
     seq_along(quatri_vect) %>% 
       map_df(function(d){
         
@@ -188,14 +190,14 @@ training_pts_tbl %>%
       list.files(full.names = T) %>%
       map_df(function(i){
         
-        # Obtain data on training point (tass cap and ndmi for a single pixel)
+        # Obtain data on training point (swir2, tca, and nbr for a single pixel)
         read_stars(i, 
-                   RasterIO = list(bands = c(8:10, 12), 
+                   RasterIO = list(bands = c(7, 12, 14), 
                                    nXOff = (x - 232305)/30 +0.5, 
                                    nYOff = (y - 2091615)/-30 +0.5, 
                                    nXSize = 1, 
                                    nYSize = 1)) %>%
-          pull(1) -> vi
+          pull(1) -> vi # pulls values as matrices into a list 
         
         # Obtain date
         i %>% 
@@ -207,36 +209,72 @@ training_pts_tbl %>%
         
         # Create tibble
         tibble(date = date, 
-               bri = vi[1],
-               gre = vi[2],
-               wet = vi[3],
-               ndmi = vi[4])
+               swir2 = vi[1],
+               tca = vi[2],
+               nbr = vi[3])
         
       }) -> vi_tbl
     
-    vi_tbl %>% 
-      mutate_at(vars(2:5), list(~(.-mean(., na.rm = T))/sd(., na.rm = T))) %>% # standardize
-      gather(-date, key = vi, value = val) %>% 
-      mutate(vi = factor(vi, levels = c("bri", "gre", "wet", "ndmi"))) %>% 
+    # SWIR2 ***
+    vi_tbl %>%
+      select(date, swir2) %>% 
       
       # Generate time series plot
-      ggplot(aes(x = date, y = val)) +
+      ggplot(aes(x = date, y = swir2)) +
       geom_smooth(span = 0.1, linetype = 0) +
-      geom_point(aes(color = val)) +
-      scale_color_viridis_c() +
-      facet_grid(vi~., scales = "free") +
+      geom_point(aes(color = swir2)) +
+      scale_color_gradientn(colors = viridis::viridis_pal(option = "C")(10), limits = c(150, 2200)) +
       scale_x_date(breaks = "3 years", minor_breaks = "1 year", date_labels = "%Y") +
-      theme(panel.grid.major.y = element_blank(), panel.grid.minor.y = element_blank(),
-            axis.text.y = element_blank(), axis.ticks.y = element_blank(), axis.title.y = element_blank(),
+      coord_cartesian(ylim = c(150, 2200)) +
+      scale_y_continuous(breaks = c(150, 1175, 2200)) +
+      theme(panel.grid.minor.y = element_blank(),
+            axis.text.y = element_blank(),
             axis.title.x = element_blank(),
+            axis.text.x = element_text(hjust = 0),
             legend.position = "none") +
-      labs(title = str_c("Point ", pt)) -> plot
+      labs(title = str_c("Point ", pt)) -> plot_swir2
+    
+    # TCA ***
+    vi_tbl %>%
+      select(date, tca) %>% 
+      
+      # Generate time series plot
+      ggplot(aes(x = date, y = tca)) +
+      geom_smooth(span = 0.1, linetype = 0) +
+      geom_point(aes(color = tca)) +
+      scale_color_gradientn(colors = viridis::viridis_pal(option = "C", direction = -1)(10), limits = c(320, 780)) +
+      scale_x_date(breaks = "3 years", minor_breaks = "1 year", date_labels = "%Y") +
+      coord_cartesian(ylim = c(320, 780)) +
+      scale_y_reverse(breaks = c(780, 550, 320)) +
+      theme(panel.grid.minor.y = element_blank(),
+            axis.text.y = element_blank(),
+            axis.title.x = element_blank(),
+            axis.text.x = element_text(hjust = 0),
+            legend.position = "none") -> plot_tca
+    
+    # NBR ***
+    vi_tbl %>%
+      select(date, nbr) %>% 
+      
+      # Generate time series plot
+      ggplot(aes(x = date, y = nbr)) +
+      geom_smooth(span = 0.1, linetype = 0) +
+      geom_point(aes(color = nbr)) +
+      scale_color_gradientn(colors = viridis::viridis_pal(option = "C", direction = -1)(10), limits = c(90, 800)) +
+      scale_x_date(breaks = "3 years", minor_breaks = "1 year", date_labels = "%Y") +
+      coord_cartesian(ylim = c(100, 800)) +
+      scale_y_reverse(breaks = c(800, 445, 90)) +
+      theme(panel.grid.minor.y = element_blank(),
+            axis.text.y = element_blank(),
+            axis.title.x = element_blank(),
+            axis.text.x = element_text(hjust = 0),
+            legend.position = "none") -> plot_nbr
     
     # Patch time-series and chips
-    p <- plot + chips + plot_layout(ncol = 1, heights = c(1, 3))
+    p <- plot_swir2 + plot_tca + plot_nbr + chips + plot_layout(ncol = 1, heights = c(0.7, 0.7, 0.7, 7))
     
     # Save
-    suppressMessages(ggsave(here::here("out_training/", str_c("chips453_pt_", str_pad(pt, 3, pad = "0"), ".png")),
+    suppressMessages(ggsave(here::here("chips/", str_c("chips453_pt_", str_pad(pt, 3, pad = "0"), ".png")),
                             plot = p,
                             width = 14,
                             height = 10))
@@ -252,3 +290,10 @@ matrix(NA, length(quatri_vect), nrow(training_pts_tbl)) %>%
   mutate(date = quatri_vect) %>% 
   select(date, everything()) %>% 
   write_csv(here::here("out_training/training_pts_classif.csv"))
+
+
+# After this script, the user needs to visually classify the chips produced, determining for each
+# quarter-year whether the central pixel is forest or non-forest. The last csv produced here should 
+# be used to that end: to populate it with the corresponding land-cover of each quarter-year for 
+# each pixel. Once populated, that table will then be used in the next script to train a Random 
+# Forest model and assess its accuracy.  

@@ -3,7 +3,7 @@
 # Script to:
 #     * Decompress Landsat images 
 #     * Crop to extent
-#     * Calculate tasseled caps, dist. index, and NDMI
+#     * Calculate tasseled cap components and other vegetation indices 
 #     * Save as multiband tif's in disk (including qa layer)
 #
 # *************************************************************************************************
@@ -11,7 +11,6 @@
 
 # Load libraries
 library(tidyverse)
-# library(lubridate)
 library(stars)
 
 # Set directory of input and output files
@@ -20,7 +19,8 @@ output_dir <- "/media/cdobler/PSEUDBOMBAX/processed_data/calakmul_landsat_analys
 
 # Loop through all files
 seq_along(list.files(input_dir)) %>%
-  map(function(sc){
+  .[247:397] %>% 
+  walk(function(sc){
     
     print(str_c("Processing scene ", sc, " / 397..."))
     
@@ -64,19 +64,21 @@ seq_along(list.files(input_dir)) %>%
     
     # Calculate additional layers
     bnds %>%
-      split("X1") %>% # Unfold
+      split("X1") %>%
       
       mutate(tc_b = round((b*0.2043) + (g*0.4158) + (r*0.5524) + (nir*0.5741) + (swir1*0.3124) + (swir2*0.2303)),
              tc_g = round((b*-0.1603) + (g*0.2819) + (r*-0.4934) + (nir*0.7940) + (swir1*-0.0002) + (swir2*-0.1446)),
              tc_w = round((b*0.0315) + (g*0.2021) + (r*0.3102) + (nir*0.1594) + (swir1*-0.6806) + (swir2*-0.6109)),
              
              di = round(tc_b - (tc_g + tc_w)),
+             tca = round(atan(tc_g/tc_b)*1000),
              
-             ndmi = round((nir - swir1)/(nir + swir2) * 1000)) %>% 
+             ndmi = round((nir - swir1)/(nir + swir1) * 1000),
+             nbr = round((nir - swir2)/(nir + swir2) * 1000)) %>% 
       
       merge() %>% 
       
-      # Convert to raster and export (smaller file size)
+      # Convert to raster and export (smaller file size than exporting with stars)
       as("Raster") %>%
       raster::writeRaster(str_c(output_dir, "00_cropped_masked_bands/img0_",date, "_", sensor, ".tif"),
                           datatype = "INT2S",
@@ -108,5 +110,7 @@ seq_along(list.files(input_dir)) %>%
 # Band 9 = Greeness
 # Band 10 = Wetness
 # Band 11 = Dist. Ind.
-# Band 12 = NDMI
+# Band 12 = Tass. Cap. Angle
+# Band 13 = NDMI
+# Band 14 = NBR
   
