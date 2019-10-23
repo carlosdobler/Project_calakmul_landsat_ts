@@ -28,7 +28,28 @@ https://cloud.google.com/compute/docs/disks/add-persistent-disk (add, format, an
 
 ### Pricing
 [Virtual machines](https://cloud.google.com/compute/vm-instance-pricing)  
-[Persistent disks](https://cloud.google.com/compute/disks-image-pricing)
+[Persistent disks](https://cloud.google.com/compute/disks-image-pricing)  
+
+### SDK
+https://cloud.google.com/sdk/docs/
+
+
+
+### Commands 
+(After creating the instance and installing G Clous SDK):  
+`sudo gcloud init --console-only`  > 1 > Y > copy-paste link in browser > copy verification code and paste in terminal > pick project  
+`sudo gcloud compute ssh ubuntu-01 --zone us-west2-a` (this is to ssh into the instance)  
+pph: sethgorelick  
+
+`sudo mount -o discard,defaults /dev/sdb /mnt/disks/input_data` (mount additional drive)  
+  
+`sudo gcloud compute scp model_randfor_full.RDS ubuntu-01:/mnt/disks/input_data --zone us-west2-a` (transfer file from physical computer to instance)  
+`sudo gcloud compute scp --recurse 00_cropped_masked_bands/ ubuntu-01:/mnt/disks/input_data --zone us-west2-a` (transfer directory)
+
+
+
+
+
 
 
 
