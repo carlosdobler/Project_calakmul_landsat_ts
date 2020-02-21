@@ -30,23 +30,48 @@ https://cloud.google.com/compute/docs/disks/add-persistent-disk (add, format, an
 [Virtual machines](https://cloud.google.com/compute/vm-instance-pricing)  
 [Persistent disks](https://cloud.google.com/compute/disks-image-pricing)  
 
-### SDK
+### SDK documentation
 https://cloud.google.com/sdk/docs/
 
+### Bash commands
+ls: list files
+df -h: show mounted drives
+ 
 
 
-### Commands 
-(After creating the instance and installing G Clous SDK):  
+
+### G Cloud Commands 
+[Link](https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu)to install G Cloud SDK.  
+If these instructions were followed, then just type:  
+`gcloud init`  
+
+Otherwise, after creating the instance and installing G Cloud SDK:  
 `sudo gcloud init --console-only`  > 1 > Y > copy-paste link in browser > copy verification code and paste in terminal > pick project  
-`sudo gcloud compute ssh ubuntu-01 --zone us-west2-a` (this is to ssh into the instance)  
-pph: sethgorelick  
 
-`sudo mount -o discard,defaults /dev/sdb /mnt/disks/input_data` (mount additional drive)  
-  
-`sudo gcloud compute scp model_randfor_full.RDS ubuntu-01:/mnt/disks/input_data --zone us-west2-a` (transfer file from physical computer to instance)  
-`sudo gcloud compute scp --recurse 00_cropped_masked_bands/ ubuntu-01:/mnt/disks/input_data --zone us-west2-a` (transfer directory)
+SSH into the instance:  
+`sudo gcloud compute ssh ubuntu-01 --zone us-west2-a`  
+(pph: sethgorelick)  
+
+Mount additional drive  
+`sudo mount -o discard,defaults /dev/sdb /mnt/disks/input_data`  
+
+Transfer files between physical computer and instance:  
+Physical -> Instance (single file):  
+`sudo gcloud compute scp file/in/physical/xxx.RDS name_of_instance:/destination/path --zone zone` (omit zone if pre-established in init)  
+e.g. `sudo gcloud compute scp model_randfor_full.RDS ubuntu-01:/mnt/disks/input_data --zone us-west2-a`  
+
+Physical -> Instance (directory):
+`sudo gcloud compute scp --recurse folder_name/ name_of_instance:/destination/path --zone zone` (omit zone if pre-established in init)  
+e.g. `sudo gcloud compute scp --recurse 00_cropped_masked_bands/ ubuntu-01:/mnt/disks/input_data --zone us-west2-a`
+
+Instance -> Physical (single file):
+`sudo gcloud compute scp name_of_instance:/file/in/instance/xxx.RDS /destination/path/in/physical/ --zone us-west2-a` (omit zone if pre-established in init)  
+e.g. `sudo gcloud compute scp ubuntu-01:/mnt/disks/input_data/tbb.RDS /media/cdobler/Neobxbaumia/Research/Project_calakmul_landsat_ts/out_training/ --zone us-west2-a`
 
 
+### Questions to Seth
+RStudio setup  
+Disaggregate storage costs from instance/computing costs  
 
 
 

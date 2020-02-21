@@ -5,6 +5,7 @@
 #     * Choose three gap-less scenes and run an unsupervised classification
 #     * Randomly distribute 450 training points among resulting classes
 #     * Produce CHIPS for each point
+#     * Produce two empty tables to be used for visual classification
 # 
 # *************************************************************************************************
 
@@ -63,7 +64,7 @@ seq_along(list.files(str_c(dir, "00_cropped_masked_bands/"))) %>%
 
 toc() # ~ 4 min
 
-# analysis pending...
+# analysis of gaps pending...
 
 
 
@@ -281,7 +282,16 @@ training_pts_tbl %>%
     
   })
 
-# Generate table for visual classification
+
+# Part 4: Generate empty tables *******************************************************************
+
+# Table to classify pixels that have been forest all the time series vs. those that do not
+training_pts_tbl %>% 
+  select(pt) %>% 
+  mutate(change = NA) %>% 
+  write_csv(here::here("out_training/training_pts_change.csv"))
+  
+# Table to classify changes in land cover
 quatri_vect <- str_c(rep(1985:2018, each = 4), "_", 1:4)
 
 matrix(NA, length(quatri_vect), nrow(training_pts_tbl)) %>%
@@ -293,7 +303,7 @@ matrix(NA, length(quatri_vect), nrow(training_pts_tbl)) %>%
 
 
 # After this script, the user needs to visually classify the chips produced, determining for each
-# quarter-year whether the central pixel is forest or non-forest. The last csv produced here should 
-# be used to that end: to populate it with the corresponding land-cover of each quarter-year for 
-# each pixel. Once populated, that table will then be used in the next script to train a Random 
-# Forest model and assess its accuracy.  
+# quarter-year whether the central pixel is forest or non-forest. The last tables produced here should 
+# be used to that end: to populate them with the corresponding land-cover of each quarter-year for 
+# each pixel. Once populated, those tables will then be used in the next script to train two Random 
+# Forest models and assess their accuracy.  
